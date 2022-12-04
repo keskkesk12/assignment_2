@@ -1,8 +1,7 @@
 #include "kf_node.h"
 #include "xkalmanfilterkernel.h"
 
-// TODO: fix size of bram
-KFNode::KFNode(const std::string & node_name, const std::string & node_namespace) : rclcpp::Node(node_name, node_namespace), bram_in(0, 0xff), bram_out(1, 0xff) {
+KFNode::KFNode(const std::string & node_name, const std::string & node_namespace) : rclcpp::Node(node_name, node_namespace), bram_in(0, 0x2000), bram_out(1, 0x2000) {
 
   // Custom code here to initialize BRAM and xkalmanfilterkernel
   // ...
@@ -11,7 +10,8 @@ KFNode::KFNode(const std::string & node_name, const std::string & node_namespace
   InstancePtr->IsReady = false;
   const char* InstanceName = "KalmanFilterKernel_0";
   XKalmanfilterkernel_Initialize(InstancePtr ,InstanceName);
-  // TODO, set Q and R matrices
+  XKalmanfilterkernel_Set_q(InstancePtr, 1);
+  XKalmanfilterkernel_Set_r(InstancePtr, 1);
 
   // Initialize subscribers
   pos_meas_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
