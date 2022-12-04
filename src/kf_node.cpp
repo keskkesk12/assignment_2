@@ -71,6 +71,7 @@ int main(int argc, char ** argv)
     auto node = std::make_shared<KFNode>();
 
     rclcpp::spin(node);
+  std::cout << "hej" << std::endl;
 
 	rclcpp::shutdown();
   return 0;
