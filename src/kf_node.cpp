@@ -9,7 +9,7 @@ KFNode::KFNode(const std::string & node_name, const std::string & node_namespace
   InstancePtr->Axi_cpu_BaseAddress = 0xa0020000;
   InstancePtr->IsReady = false;
   const char* InstanceName = "KalmanFilterKernel_0";
-  XKalmanfilterkernel_Initialize(InstancePtr ,InstanceName);
+  assert(XKalmanfilterkernel_Initialize(InstancePtr ,InstanceName) == XST_SUCCESS);
   XKalmanfilterkernel_Set_q(InstancePtr, 1);
   XKalmanfilterkernel_Set_r(InstancePtr, 1);
 
