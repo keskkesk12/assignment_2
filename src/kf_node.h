@@ -47,6 +47,11 @@ private:
   queue<acc_t> control_input_queue;
 
   // Add here BRAM and xkalmanfilterkernel objects
+  void call_kalman_filter_if_both_queues_not_empty();
+
+  XKalmanfilterkernel *InstancePtr;
+  BRAM bram_in;
+  BRAM bram_out;
 
 };
 

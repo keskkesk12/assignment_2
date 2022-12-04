@@ -1,9 +1,17 @@
 #include "kf_node.h"
+#include "xkalmanfilterkernel.h"
 
-KFNode::KFNode(const std::string & node_name, const std::string & node_namespace) : rclcpp::Node(node_name, node_namespace) {
+// TODO: fix size of bram
+KFNode::KFNode(const std::string & node_name, const std::string & node_namespace) : rclcpp::Node(node_name, node_namespace), bram_in(0, 0xff), bram_out(1, 0xff) {
 
   // Custom code here to initialize BRAM and xkalmanfilterkernel
   // ...
+  InstancePtr = new XKalmanfilterkernel;
+  InstancePtr->Axi_cpu_BaseAddress = 0xa0020000;
+  InstancePtr->IsReady = false;
+  const char* InstanceName = "KalmanFilterKernel_0";
+  XKalmanfilterkernel_Initialize(InstancePtr ,InstanceName);
+  // TODO, set Q and R matrices
 
   // Initialize subscribers
   pos_meas_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>(
@@ -25,6 +33,29 @@ KFNode::KFNode(const std::string & node_name, const std::string & node_namespace
 KFNode::~KFNode() {
   // Custom code here to close BRAM and xkalmanfilterkernel
   // ...
+  XKalmanfilterkernel_Release(InstancePtr);
+  delete InstancePtr;
+}
+
+
+void KFNode::call_kalman_filter_if_both_queues_not_empty() {
+
+  if (!pos_meas_queue.empty() && !control_input_queue.empty()) {
+    while (!XKalmanfilterkernel_IsIdle(InstancePtr));
+    pos_t a = pos_meas_queue.front();
+    acc_t b = control_input_queue.front();    
+    pos_meas_queue.pop();
+    control_input_queue.pop();    
+
+    bram_in[0] = a.x;
+    bram_in[1] = a.y;
+    bram_in[2] = a.z;
+    bram_in[3] = b.ax;
+    bram_in[4] = b.ay;
+    bram_in[5] = b.az;
+
+    XKalmanfilterkernel_Start(InstancePtr);
+  }
 }
 
 void KFNode::pos_meas_callback(const std_msgs::msg::Float32MultiArray::SharedPtr msg) {
@@ -36,6 +67,7 @@ void KFNode::pos_meas_callback(const std_msgs::msg::Float32MultiArray::SharedPtr
 
   // Custom code here to possibly call Kalman filter if both queues are not empty
   // ...
+  call_kalman_filter_if_both_queues_not_empty();
 
 }
 
@@ -48,7 +80,7 @@ void KFNode::control_input_callback(const std_msgs::msg::Float32MultiArray::Shar
 
   // Custom code here to possibly call Kalman filter if both queues are not empty
   // ...
-
+  call_kalman_filter_if_both_queues_not_empty();
 }
 
 void KFNode::publish_pos_est(pos_t pos_est) {
