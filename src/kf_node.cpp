@@ -4,7 +4,6 @@
 KFNode::KFNode(const std::string & node_name, const std::string & node_namespace) : rclcpp::Node(node_name, node_namespace), bram_in(0, 0x2000), bram_out(1, 0x2000) {
 
   // Custom code here to initialize BRAM and xkalmanfilterkernel
-  // ...
   InstancePtr = new XKalmanfilterkernel;
   InstancePtr->Axi_cpu_BaseAddress = 0xa0020000;
   InstancePtr->IsReady = false;
@@ -32,7 +31,6 @@ KFNode::KFNode(const std::string & node_name, const std::string & node_namespace
 
 KFNode::~KFNode() {
   // Custom code here to close BRAM and xkalmanfilterkernel
-  // ...
   XKalmanfilterkernel_Release(InstancePtr);
   delete InstancePtr;
 }
@@ -41,20 +39,25 @@ KFNode::~KFNode() {
 void KFNode::call_kalman_filter_if_both_queues_not_empty() {
 
   if (!pos_meas_queue.empty() && !control_input_queue.empty()) {
-    while (!XKalmanfilterkernel_IsIdle(InstancePtr));
     pos_t a = pos_meas_queue.front();
     acc_t b = control_input_queue.front();    
     pos_meas_queue.pop();
     control_input_queue.pop();    
 
-    bram_in[0] = a.x;
-    bram_in[1] = a.y;
-    bram_in[2] = a.z;
-    bram_in[3] = b.ax;
-    bram_in[4] = b.ay;
-    bram_in[5] = b.az;
+    bram_in[0] = *(float*)&(a.x);
+    bram_in[1] = *(float*)&(a.y);
+    bram_in[2] = *(float*)&(a.z);
+    bram_in[3] = *(float*)&(b.ax);
+    bram_in[4] = *(float*)&(b.ay);
+    bram_in[5] = *(float*)&(b.az);
 
     XKalmanfilterkernel_Start(InstancePtr);
+    while (!XKalmanfilterkernel_IsIdle(InstancePtr));
+    pos_t pos;
+    pos.x = *(float*)&(bram_out[0]);
+    pos.y = *(float*)&(bram_out[1]);
+    pos.z = *(float*)&(bram_out[2]);
+    publish_pos_est(pos);
   }
 }
 
@@ -82,6 +85,7 @@ void KFNode::control_input_callback(const std_msgs::msg::Float32MultiArray::Shar
   // ...
   call_kalman_filter_if_both_queues_not_empty();
 }
+
 
 void KFNode::publish_pos_est(pos_t pos_est) {
   geometry_msgs::msg::PoseStamped pos_est_msg;
